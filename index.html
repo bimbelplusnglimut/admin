@@ -523,7 +523,8 @@ D.kelas.push({ id: 'K7', nama: 'Try Out Matematika SMP', mapel: 'Matematika', ta
 D.kelas.push({ id: 'K8', nama: 'Private Matematika SD', mapel: 'Matematika', tarif: 80000, hari: 'Kamis', jam_mulai: '14:00', jam_selesai: '15:00', tentor: 'Kak Budi', kapasitas: 1, aktif: true, khusus: 0, tgl_event: '', jenjang: 'SD', program: 'Private' });
 
 const kartuKelas = k => {
-  const pr = progK(k), jn = jenjK(k), n = k.peserta.length, p = k.kapasitas ? Math.min(100, n / k.kapasitas * 100) : 0, w = warnaKelas(k), i = esc(k.id);
+  const peserta = Array.isArray(k.peserta) ? k.peserta : [];
+const pr = progK(k), jn = jenjK(k), n = peserta.length, p = k.kapasitas ? Math.min(100, n / k.kapasitas * 100) : 0, w = warnaKelas(k), i = esc(k.id);
   return `<article class="card kc ${k.aktif ? '' : 'off'} ${pr === 'Event' ? 'evt' : pr === 'Private' ? 'prv' : ''}" style="--kc:${w.c};--kb:${w.b}"><div class="kh"><h4><span class="kdot"></span>${esc(k.nama)}</h4><span class="badge ${k.aktif ? '' : 'st-off'}">${k.aktif ? 'Aktif' : 'Nonaktif'}</span></div>
   <div class="kbadges">${badgeProgram(pr)}${jn ? `<span class="badge jn">${esc(jn)}</span>` : '<span class="badge st-menipis" title="Klik Ubah lalu pilih jenjang">Jenjang belum diatur</span>'}</div>
   <p><b>${esc(k.hari)}</b>${k.tgl_event ? ' · ' + esc(tglPendek(k.tgl_event)) : ''}, ${esc(k.jam_mulai)}–${esc(k.jam_selesai)}</p>
@@ -534,8 +535,10 @@ const kartuKelas = k => {
 };
 
 pages.kelas = async el => {
-  const d = await api('kelasList'), F = { q: '', hari: '', mapel: '', st: 'semua', pr: '', jj: '', g: '' }; let hal = 1;
-  const ks = d.kelas.sort((a, b) => URUT.indexOf(a.hari) - URUT.indexOf(b.hari) || (a.jam_mulai > b.jam_mulai ? 1 : -1)), grp = k => k.nama + '|' + k.mapel;
+  const d = (await api('kelasList')) || {}, F = { q: '', hari: '', mapel: '', st: 'semua', pr: '', jj: '', g: '' }; let hal = 1;
+const rawKelas = Array.isArray(d.kelas) ? d.kelas : (Array.isArray(d) ? d : []);
+const daftarSiswa = Array.isArray(d.siswa) ? d.siswa : [];
+const ks = [...rawKelas].sort((a, b) => URUT.indexOf(a.hari) - URUT.indexOf(b.hari) || (String(a.jam_mulai || '') > String(b.jam_mulai || '') ? 1 : -1)), grp = k => k.nama + '|' + k.mapel;
   const lihat = () => ks.filter(k => (!F.hari || k.hari === F.hari) && (!F.mapel || k.mapel === F.mapel) && (F.st === 'semua' || (F.st === 'aktif') === !!k.aktif) && (!F.pr || progK(k) === F.pr) && (!F.jj || (jenjK(k) || '-') === F.jj) && (!F.g || grp(k) === F.g)
     && (k.nama + ' ' + k.mapel + ' ' + k.tentor + ' ' + k.hari).toLowerCase().includes(F.q));
   const ulang = () => pages.kelas(el), O = (v, t) => `<option value="${esc(v)}">${esc(t)}</option>`;
@@ -564,7 +567,7 @@ pages.kelas = async el => {
     const k = ks.find(x => x.id === b.dataset.id), a = b.dataset.a;
     if (a === 'new') formKelas(null, ulang, ks, dukung);
     else if (a === 'edit') formKelas(k, ulang, ks, dukung);
-    else if (a === 'peserta') formPeserta(k, d.siswa, ulang);
+    else if (a === 'peserta') formPeserta(k, daftarSiswa, ulang);
     else if (a === 'tog') { const { peserta, ...kk } = k; await api('kelasSimpan', { kelas: { ...kk, aktif: k.aktif ? 0 : 1 } }); toast(k.aktif ? 'Kelas dinonaktifkan' : 'Kelas diaktifkan'); ulang(); }
     else if (a === 'del' && confirm(`Hapus kelas "${k.nama}"? Riwayat absen yang sudah tercatat tetap tersimpan.`)) { await api('kelasHapus', { id: k.id }); toast('Kelas dihapus'); ulang(); }
   };
