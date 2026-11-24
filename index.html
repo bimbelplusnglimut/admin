@@ -341,8 +341,19 @@ async function api(a, d = {}) {
   try {
     if (!CFG.API_URL) { if (!demo[a]) throw new Error('Belum tersedia di mode demo'); return await demo[a](d); }
     const r = await fetch(CFG.API_URL, { method: 'POST', body: JSON.stringify({ action: a, token: sessionStorage.bp_t, ...d }) });
-    const j = await r.json(); if (!j.ok) throw new Error(j.error); return j.data;
+    const j = await r.json(); if (!j.ok) throw new Error(j.error); return normAktif(a, j.data);
   } catch (e) { if (/Sesi/.test(e.message)) logout(); throw e; }
+}
+/* Google Sheets/Apps Script sering mengirim kolom "aktif" sebagai teks ("FALSE", "0", "false").
+   Di JavaScript teks tersebut bernilai TRUE, sehingga kelas nonaktif tetap tampil aktif dan
+   centang/toggle tidak bisa mematikannya. Di sini semua nilai diubah menjadi boolean sungguhan. */
+const aktifYa = v => v === true || v === 1 || /^(1|true|ya|y|aktif|yes)$/i.test(String(v ?? '').trim());
+const normKelas = k => (k && typeof k === 'object' ? { ...k, aktif: aktifYa(k.aktif) } : k);
+function normAktif(a, d) {
+  if (!d) return d;
+  if (a === 'kelasList') return Array.isArray(d) ? d.map(normKelas) : Array.isArray(d.kelas) ? { ...d, kelas: d.kelas.map(normKelas) } : d;
+  if (a === 'absenInit') return Array.isArray(d.kelas) ? { ...d, kelas: d.kelas.map(normKelas) } : d;
+  return d;
 }
 
 /* ---------- Login & navigasi ---------- */
